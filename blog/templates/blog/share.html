@@ -1,0 +1,29 @@
+{% extends 'blog/main.html' %}
+{% block title %}
+    <title>Share - {{ post.title }}</title>
+{% endblock title %}
+{% block content %}
+    {% if sent %}
+        <div class="my-3 alert alert-success">E-mail successfully sent to {{ form.cleaned_data.to }}.</div>
+    {% else %}
+        <div style="max-width:500px; margin:0 auto">
+            <h3 class="text-center my-3">Share "{{ post.title }}"</h3>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="alert alert-danger my-1">
+                                {{ field.errors.as_text }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <input type="submit" value="Send Email" class="btn btn-success">
+            </form>
+        </div>
+    {% endif %}
+
+{% endblock content %}

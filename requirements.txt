@@ -1,0 +1,2 @@
+django==3.0.3
+django-taggit==1.2.0

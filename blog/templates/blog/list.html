@@ -1,25 +1,28 @@
-{% extends 'blog/main.html' %}
-{% load blog_tags %}
-{% block title %}
-    <title>Blog</title>
-{% endblock title %}
-{% block content %}
-    <h1 class="my-3 text-center">Blog Posts</h1>
-    <hr>
-    {% if tag %}
-        <h4 class="my-4">Posts with tag "{{ tag }}"</h4>
-    {% endif %}
-    <ul class="list-group">
-        {% for post in posts %}
-            <li class="list-group-item">
-                <h2><a href="{{ post.get_absolute_path }}">{{ post.title|title }}</a></h2>
-                {% for tag in post.tags.all %}
-                    <a href="{% url 'blog:post_list_by_tag' tag.slug %}" class="badge badge-pill badge-success">{{ tag }}</a>
-                {% endfor %}
-                <p>Published by {{ post.author }} on {{ post.publish }}.</p>
-                <p>{{ post.body|markdown|truncatewords_html:30 }}</p>
-            </li>
-        {% endfor %}
-    </ul>
-    {% include 'blog/pagination.html' with page=posts %}
-{% endblock content %}
+{% extends 'blog/main.html' %} {% load blog_tags %} {% block title %}
+<title>Blog</title>
+{% endblock title %} {% block content %}
+<h1 class="my-3 font-weight-light">Posts</h1>
+<hr />
+{% if tag %}
+<h4 class="my-4">Posts with tag "{{ tag }}"</h4>
+{% endif %}
+<ul class="list-group">
+  {% for post in posts %}
+  <li class="list-group-item">
+    <h2><a href="{{ post.get_absolute_path }}">{{ post.title|title }}</a></h2>
+    <h5>
+      {% for tag in post.tags.all %}
+      <a
+        href="{% url 'blog:post_list_by_tag' tag.slug %}"
+        class="badge badge-success mt-1"
+      >
+        {{ tag }}
+      </a>
+      {% endfor %}
+    </h5>
+    <p>Published by {{ post.author }} on {{ post.publish }}.</p>
+    <div>{{ post.body|markdown|truncatewords_html:30 }}</div>
+  </li>
+  {% endfor %}
+</ul>
+{% include 'blog/pagination.html' with page=page_obj %} {% endblock content %}

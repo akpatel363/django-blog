@@ -1,37 +1,42 @@
 {% load blog_tags %}
 <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
-        {% block title %}
-        {% endblock title %}
-    </head>
-    <body>
-        {% include 'blog/navbar.html' %}
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-9 col-12">
-                    {% block content %}
-                    {% endblock content %}
-                </div>
-                <div class="col-md-3 col-12 bg-light p-2">
-                    <h3>My Blog</h3>
-                    <p>This is my blog, I've written {% total_posts %} posts so for.</p>
-                    <h5>Latest Posts</h5>
-                    {% latest_posts %}
-                    <h5>Most Commented Posts</h5>
-                    {% most_commented_posts as commented_posts %}
-                    <ul>
-                        {% for post in commented_posts %}
-                            <li><a href="{{ post.get_absolute_path }}">{{ post.title }}</a></li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+    />
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+    {% block title %} {% endblock title %}
+  </head>
+  <body>
+    {% include 'blog/navbar.html' %}
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-8 col-12">
+          {% block content %} {% endblock content %}
         </div>
-    </body>
+        <div class="col-lg-4 col-12 bg-light">
+          <div class="p-3 sticky-top">
+            <h3>My Blog</h3>
+            <p>This is my blog, I've written {% total_posts %} posts so for.</p>
+            <h5>Latest Posts</h5>
+            {% latest_posts %}
+            <h5>Most Commented Posts</h5>
+            {% most_commented_posts as commented_posts %}
+            <ul>
+              {% for post in commented_posts %}
+              <li>
+                <a href="{{ post.get_absolute_path }}">{{ post.title }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
 </html>

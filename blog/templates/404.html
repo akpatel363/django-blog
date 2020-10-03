@@ -1,0 +1,10 @@
+{% extends 'blog/main.html' %} {%block title%} <title>Page not found</title>
+{%endblock title%} {% block content %}
+<div class="text-center my-4">
+  <h1 class="display-4">404</h1>
+  <h4 class="font-weight-light">Page not found</h4>
+  <a href="{% url 'blog:post_list' %}" class="btn btn-primary my-2">
+    Back to home
+  </a>
+</div>
+{% endblock content %}

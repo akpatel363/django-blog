@@ -1,92 +1,88 @@
-from django.shortcuts import render, get_object_or_404
-from django.views.generic import ListView
+from django.shortcuts import render, get_object_or_404, reverse
+from django.views.generic import ListView, FormView, DetailView, View
+from django.views.generic.detail import SingleObjectMixin
 from django.db.models import Count
-from django.core.mail import send_mail
-from taggit.models import Tag
 from django.contrib.postgres.search import SearchVector
-from django.core.paginator import PageNotAnInteger, EmptyPage, Paginator
-from .forms import EmailPostForm, CommentForm, SearchForm
+from .forms import CommentForm, SearchForm
 from .models import Post
-
-
-# Create your views here.
 
 
 class PostListView(ListView):
     queryset = Post.published.all()
     context_object_name = 'posts'
-    paginate_by = 6
+    paginate_by = 12
     template_name = 'blog/list.html'
 
-
-def post_list(req, tag_slug=None):
-    objs = Post.published.all()
-    tag = None
-    if tag_slug:
-        tag = get_object_or_404(Tag, slug=tag_slug)
-        objs = objs.filter(tags__in=[tag])
-
-    paginator = Paginator(objs, 6)
-    page = req.GET.get('page')
-    try:
-        posts = paginator.page(page)
-    except PageNotAnInteger:
-        posts = paginator.page(1)
-    except EmptyPage:
-        posts = paginator.page(paginator.num_pages)
-    context = {'posts': posts, 'page': page, 'tag': tag}
-    return render(req, 'blog/list.html', context)
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if (self.kwargs.get('tag_slug') != None):
+            qs = qs.filter(tags__slug__in=[self.kwargs['tag_slug']])
+        return qs.select_related('author').prefetch_related('tags')
 
 
-def post_detail(req, year, month, date, post):
-    post = get_object_or_404(Post, slug=post, publish__year=year, publish__month=month, publish__day=date)
-    comments = post.comments.filter(active=True)
-    tag_list = post.tags.values_list('id', flat=True)
-    similar_posts = Post.published.filter(tags__in=tag_list).exclude(id=post.id)
-    similar_posts = similar_posts.annotate(same_tags=Count('tags')).order_by('-same_tags', '-publish')[:4]
-    new_comment = None
-    if req.method == 'POST':
-        comment_form = CommentForm(data=req.POST)
-        if comment_form.is_valid():
-            new_comment = comment_form.save(commit=False)
-            new_comment.post = post
-            new_comment.save()
-    else:
-        comment_form = CommentForm()
-    context = {
-        'post': post,
-        'comments': comments,
-        'new_comment': new_comment,
-        'comment_form': comment_form,
-        'similar_posts': similar_posts
-    }
-    return render(req, 'blog/post_detail.html', context)
+class PostDetail(View):
+    def get(self, request, *args, **kwargs):
+        return PostDetailView.as_view()(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return PostCommentView.as_view()(request, *args, **kwargs)
 
 
-def post_share(req, post_id):
-    post = get_object_or_404(Post, id=post_id, status="published")
-    sent = False
-    if req.method == 'POST':
-        form = EmailPostForm(req.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            post_url = req.build_absolute_uri(post.get_absolute_path())
-            sub = f"{cd['name']} recommends you to read {post.title}"
-            message = f"Read {post.title} at {post_url}\n\n {cd['name']}'s comments: {cd['comments']}"
-            send_mail(sub, message, 'clashofclanssmasher94@gmail.com', [cd['to']])
-            sent = True
-    else:
-        form = EmailPostForm()
-    return render(req, 'blog/share.html', {'post': post, 'form': form, 'sent': sent})
+class PostCommentView(SingleObjectMixin, FormView):
+    template_name = "blog/post_detail.html"
+    model = Post
+    queryset = Post.published.all().select_related(
+        'author').prefetch_related('tags', 'comments')
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = CommentForm(request.POST)
+        if(form.is_valid()):
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+
+    def form_valid(self, form):
+        comment = form.save(commit=False)
+        comment.post = self.object
+        comment.save()
+        return super().form_valid(form)
+
+    def get_success_url(self, *args):
+        date = self.object.created
+        return reverse('blog:post_detail', kwargs={'year': date.year, 'month': date.month, 'date': date.day, 'slug': self.object.slug})
 
 
-def search_view(req):
-    form = SearchForm()
-    query = None
-    results = []
-    if 'query' in req.GET:
-        form = SearchForm(req.GET)
-        if form.is_valid():
-            query = form.cleaned_data['query']
-            results = Post.published.annotate(search=SearchVector('title', 'body')).filter(search=query)
-    return render(req, 'blog/search.html', {'form': form, 'query': query, 'results': results})
+class PostDetailView(DetailView):
+    template_name = 'blog/post_detail.html'
+    queryset = Post.published.all().select_related(
+        'author').prefetch_related('comments', 'tags')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["similar_posts"] = Post.published.filter(tags__in=self.object.tags.values_list(
+            'id', flat=True)).exclude(id=self.object.id).annotate(similar_tags=Count('tags')).order_by('-similar_tags', '-created')
+        context["form"] = CommentForm()
+        return context
+
+
+class SearchView(ListView):
+    context_object_name = 'results'
+    paginate_by = 12
+    template_name = 'blog/search.html'
+
+    def get_queryset(self):
+        results = []
+        if ('query' in self.request.GET):
+            results = Post.published.annotate(
+                search=SearchVector('title', 'body')).filter(search=self.request.GET['query'])
+        return results
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if 'query' in self.request.GET:
+            context["form"] = SearchForm(self.request.GET)
+            context['query'] = self.request.GET['query']
+        else:
+            context["form"] = SearchForm()
+        return context
